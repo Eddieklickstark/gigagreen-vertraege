@@ -45,7 +45,7 @@
       flex: 1;
     }
     #vertrag-list-container .icon-circle {
-      background: #fff86d;
+      background: #f1f86d;
       border-radius: 50%;
       width: 80px;
       height: 80px;
@@ -65,7 +65,7 @@
       color: #111827;
     }
     #vertrag-list-container .download-button {
-      background-color: #fff86d;
+      background-color: #f1f86d;
       color: #111827;
       border: none;
       border-radius: 50px;
@@ -77,7 +77,7 @@
       font-family: 'Figtree', sans-serif;
     }
     #vertrag-list-container .download-button:hover {
-      background-color: #fff200;
+      background-color: #e8ef00;
       transform: translateY(-1px);
     }
     #vertrag-list-container .download-button:active {

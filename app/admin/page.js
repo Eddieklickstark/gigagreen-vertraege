@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function AdminPage() {
   const [vertraege, setVertraege] = useState([]);
@@ -11,6 +11,10 @@ export default function AdminPage() {
   const [newVertrag, setNewVertrag] = useState({ name: '', driveLink: '' });
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
 
   const getAuthHeader = () => {
     return 'Basic ' + btoa(`${credentials.username}:${credentials.password}`);
@@ -58,6 +62,73 @@ export default function AdminPage() {
     }
   };
 
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    setUploading(true);
+    setUploadStatus(`"${file.name}" wird hochgeladen...`);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': getAuthHeader()
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Upload fehlgeschlagen');
+      }
+
+      const data = await response.json();
+
+      // Auto-fill the name (without extension) and link
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+      setNewVertrag({
+        name: nameWithoutExt,
+        driveLink: data.link
+      });
+      setUploadStatus(`"${file.name}" erfolgreich hochgeladen`);
+
+      setTimeout(() => setUploadStatus(''), 4000);
+    } catch (err) {
+      setUploadStatus(`Fehler: ${err.message}`);
+      setTimeout(() => setUploadStatus(''), 5000);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
+    }
+  };
+
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!newVertrag.name.trim() || !newVertrag.driveLink.trim()) return;
@@ -76,6 +147,7 @@ export default function AdminPage() {
       if (!response.ok) throw new Error('Fehler beim Hinzufügen');
 
       setNewVertrag({ name: '', driveLink: '' });
+      setUploadStatus('');
       loadVertraege();
     } catch (err) {
       setError('Fehler beim Hinzufügen');
@@ -167,17 +239,60 @@ export default function AdminPage() {
 
           <div className="card">
             <h2 className="card-title">Neue Vorlage hinzufügen</h2>
-            <p className="helper-text">
-              1. Datei in den{' '}
-              <a href="https://drive.google.com/drive/folders/1qoE0Exyw1wgYWtwtGrQOVLpUyNppujm8" target="_blank" rel="noopener noreferrer" className="helper-link">
-                Google Drive Ordner
-              </a>
-              {' '}hochladen
-              <br />
-              2. Rechtsklick auf die Datei → „Link kopieren"
-              <br />
-              3. Name und Link hier einfügen
-            </p>
+
+            {/* Drag & Drop Upload Zone */}
+            <div
+              className={`dropzone ${dragActive ? 'dropzone-active' : ''} ${uploading ? 'dropzone-uploading' : ''}`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => !uploading && fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx,.doc,.pdf"
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
+              {uploading ? (
+                <div className="dropzone-content">
+                  <div className="spinner" />
+                  <p className="dropzone-text">{uploadStatus}</p>
+                </div>
+              ) : uploadStatus && !uploadStatus.startsWith('Fehler') ? (
+                <div className="dropzone-content">
+                  <div className="dropzone-icon dropzone-icon-success">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                      <path d="M9.9997 15.1709L19.1921 5.97852L20.6063 7.39273L9.9997 17.9993L3.63574 11.6354L5.04996 10.2212L9.9997 15.1709Z"/>
+                    </svg>
+                  </div>
+                  <p className="dropzone-text success-text">{uploadStatus}</p>
+                  <p className="dropzone-hint">Name und Link wurden automatisch ausgefüllt</p>
+                </div>
+              ) : (
+                <div className="dropzone-content">
+                  <div className="dropzone-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+                      <path d="M12 12.5858L16.2426 16.8284L14.8284 18.2426L13 16.4142V22H11V16.4142L9.17157 18.2426L7.75736 16.8284L12 12.5858ZM12 2C15.5934 2 18.5544 4.70761 18.9541 8.19395C21.2858 8.83154 23 10.9656 23 13.5C23 16.3688 20.8036 18.7246 18.0006 18.9776L18 17C19.6569 17 21 15.6569 21 14C21 12.3431 19.6569 11 18 11H17V10C17 7.23858 14.7614 5 12 5C9.23858 5 7 7.23858 7 10V11H6C4.34315 11 3 12.3431 3 14C3 15.6569 4.34315 17 6 17L6.00039 18.9776C3.19696 18.7252 1 16.3692 1 13.5C1 10.9656 2.71424 8.83154 5.04648 8.19411C5.44561 4.70761 8.40661 2 12 2Z"/>
+                    </svg>
+                  </div>
+                  <p className="dropzone-text">
+                    {dragActive ? 'Datei hier ablegen' : 'Datei hierhin ziehen oder klicken'}
+                  </p>
+                  <p className="dropzone-hint">DOCX, DOC oder PDF — wird direkt in Google Drive hochgeladen</p>
+                </div>
+              )}
+              {uploadStatus && uploadStatus.startsWith('Fehler') && (
+                <p className="dropzone-error">{uploadStatus}</p>
+              )}
+            </div>
+
+            <div className="divider">
+              <span className="divider-text">Dann Name prüfen und hinzufügen</span>
+            </div>
+
             <form onSubmit={handleAdd}>
               <div className="form-row">
                 <input
@@ -196,7 +311,7 @@ export default function AdminPage() {
                   className="admin-input input-flex"
                   required
                 />
-                <button type="submit" className="add-button" disabled={adding}>
+                <button type="submit" className="add-button" disabled={adding || !newVertrag.driveLink}>
                   {adding ? '...' : '+ Hinzufügen'}
                 </button>
               </div>
@@ -250,11 +365,14 @@ export default function AdminPage() {
 }
 
 const responsiveStyles = `
+  /* CI Colors: Dunkelgrün #073b2a, Neongelb #f1f86d, Hellgrau #f8f8f8, Font: Figtree */
+
   .admin-container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    background: #f8f8f8;
     padding: 2rem;
     box-sizing: border-box;
+    font-family: 'Figtree', sans-serif;
   }
 
   .login-card {
@@ -263,7 +381,7 @@ const responsiveStyles = `
     background: #fff;
     border-radius: 16px;
     padding: 2.5rem;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 24px rgba(7, 59, 42, 0.08);
     text-align: center;
   }
 
@@ -272,7 +390,7 @@ const responsiveStyles = `
   .logo-circle {
     width: 80px;
     height: 80px;
-    background: #fff86d;
+    background: #f1f86d;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
@@ -311,7 +429,7 @@ const responsiveStyles = `
     border-radius: 10px;
     outline: none;
     transition: border-color 0.2s;
-    font-family: inherit;
+    font-family: 'Figtree', sans-serif;
     box-sizing: border-box;
   }
 
@@ -320,7 +438,7 @@ const responsiveStyles = `
   }
 
   .primary-button {
-    background: #fff86d;
+    background: #f1f86d;
     color: #073b2a;
     border: none;
     border-radius: 50px;
@@ -329,12 +447,12 @@ const responsiveStyles = `
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    font-family: inherit;
+    font-family: 'Figtree', sans-serif;
     margin-top: 0.5rem;
   }
 
   .primary-button:hover {
-    background: #fff200;
+    background: #e8ef00;
   }
 
   .dashboard {
@@ -362,36 +480,122 @@ const responsiveStyles = `
     border-radius: 16px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    box-shadow: 0 2px 12px rgba(7, 59, 42, 0.04);
   }
 
   .card-title {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #111827;
-    margin: 0 0 1rem 0;
-  }
-
-  .helper-text {
-    font-size: 0.9rem;
-    color: #6B7280;
-    line-height: 1.7;
-    margin: 0 0 1rem 0;
-    padding: 0.75rem 1rem;
-    background: #F9FAFB;
-    border-radius: 8px;
-    border-left: 3px solid #073b2a;
-  }
-
-  .helper-link {
     color: #073b2a;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    margin: 0 0 1rem 0;
   }
 
-  .helper-link:hover {
-    color: #0a5c42;
+  /* Drag & Drop Zone */
+  .dropzone {
+    border: 2px dashed #D1D5DB;
+    border-radius: 12px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #f8f8f8;
+  }
+
+  .dropzone:hover {
+    border-color: #073b2a;
+    background: #f0fdf4;
+  }
+
+  .dropzone-active {
+    border-color: #f1f86d;
+    background: #fefff0;
+    border-style: solid;
+  }
+
+  .dropzone-uploading {
+    cursor: wait;
+    border-color: #073b2a;
+    background: #f0fdf4;
+  }
+
+  .dropzone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dropzone-icon {
+    width: 48px;
+    height: 48px;
+    background: #f1f86d;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #073b2a;
+  }
+
+  .dropzone-icon-success {
+    background: #073b2a;
+    color: #f1f86d;
+  }
+
+  .dropzone-text {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #073b2a;
+    margin: 0;
+  }
+
+  .success-text {
+    color: #073b2a;
+  }
+
+  .dropzone-hint {
+    font-size: 0.85rem;
+    color: #6B7280;
+    margin: 0;
+  }
+
+  .dropzone-error {
+    font-size: 0.85rem;
+    color: #991B1B;
+    margin: 0.5rem 0 0 0;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #E5E7EB;
+    border-top-color: #073b2a;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.25rem 0;
+  }
+
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #E5E7EB;
+  }
+
+  .divider-text {
+    font-size: 0.8rem;
+    color: #6B7280;
+    font-weight: 500;
+    white-space: nowrap;
   }
 
   .form-row {
@@ -414,12 +618,17 @@ const responsiveStyles = `
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    font-family: inherit;
+    font-family: 'Figtree', sans-serif;
     white-space: nowrap;
   }
 
-  .add-button:hover {
+  .add-button:hover:not(:disabled) {
     background: #0a5c42;
+  }
+
+  .add-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .list {
@@ -433,7 +642,7 @@ const responsiveStyles = `
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.25rem;
-    background: #F9FAFB;
+    background: #f8f8f8;
     border-radius: 12px;
     gap: 1rem;
   }
@@ -449,7 +658,7 @@ const responsiveStyles = `
   .item-icon {
     width: 48px;
     height: 48px;
-    background: #fff86d;
+    background: #f1f86d;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -465,7 +674,7 @@ const responsiveStyles = `
 
   .item-name {
     font-weight: 600;
-    color: #111827;
+    color: #073b2a;
     font-size: 1rem;
     word-break: break-word;
   }
@@ -490,7 +699,7 @@ const responsiveStyles = `
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    font-family: inherit;
+    font-family: 'Figtree', sans-serif;
     flex-shrink: 0;
   }
 
@@ -561,6 +770,10 @@ const responsiveStyles = `
 
     .card {
       padding: 1.25rem;
+    }
+
+    .dropzone {
+      padding: 1.5rem 1rem;
     }
   }
 
