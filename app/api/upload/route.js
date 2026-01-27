@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 import { checkAuth, unauthorizedResponse } from '@/lib/auth';
 import { Readable } from 'stream';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +23,7 @@ function getAuth() {
   }
 
   if (!credentials.client_email) {
-    throw new Error('Service Account JSON enthält keine client_email. Keys vorhanden: ' + Object.keys(credentials).join(', '));
+    throw new Error('Service Account JSON enthält keine client_email');
   }
 
   return new google.auth.GoogleAuth({
@@ -36,12 +36,57 @@ export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
+// Step 1: POST with just filename+type → returns resumable upload URL
+// Step 2: POST with file body → direct upload (for small files)
 export async function POST(request) {
   if (!checkAuth(request)) {
     return unauthorizedResponse();
   }
 
   try {
+    const contentType = request.headers.get('content-type') || '';
+
+    // If JSON request: create resumable upload session and return URL
+    if (contentType.includes('application/json')) {
+      const { filename, mimeType } = await request.json();
+      if (!filename) {
+        return NextResponse.json({ error: 'filename required' }, { status: 400, headers: corsHeaders });
+      }
+
+      const auth = getAuth();
+      const authClient = await auth.getClient();
+      const token = await authClient.getAccessToken();
+
+      // Create resumable upload session directly via Google API
+      const res = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token.token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: filename,
+            parents: [FOLDER_ID],
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Google API error: ${res.status} ${errText}`);
+      }
+
+      const uploadUrl = res.headers.get('location');
+
+      return NextResponse.json({
+        uploadUrl,
+        token: token.token,
+      }, { headers: corsHeaders });
+    }
+
+    // Fallback: FormData upload for small files (< 4MB)
     const formData = await request.formData();
     const file = formData.get('file');
 
@@ -54,21 +99,6 @@ export async function POST(request) {
 
     const auth = getAuth();
     const drive = google.drive({ version: 'v3', auth });
-
-    // Verify folder access first
-    try {
-      await drive.files.get({
-        fileId: FOLDER_ID,
-        fields: 'id, name',
-        supportsAllDrives: true,
-        includeItemsFromAllDrives: true,
-      });
-    } catch (folderErr) {
-      return NextResponse.json(
-        { error: `Ordner-Zugriff fehlgeschlagen (${FOLDER_ID}): ${folderErr.message}` },
-        { status: 500, headers: corsHeaders }
-      );
-    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const stream = Readable.from(buffer);
@@ -86,18 +116,14 @@ export async function POST(request) {
       supportsAllDrives: true,
     });
 
-    // Try to make file accessible via link (may fail on shared drives with inherited permissions)
+    // Try to set permissions (shared drives may inherit)
     try {
       await drive.permissions.create({
         fileId: driveFile.data.id,
-        requestBody: {
-          role: 'reader',
-          type: 'anyone',
-        },
+        requestBody: { role: 'reader', type: 'anyone' },
         supportsAllDrives: true,
       });
     } catch (permErr) {
-      // Shared drives often inherit permissions from parent — this is fine
       console.log('Permission already inherited:', permErr.message);
     }
 

@@ -69,35 +69,57 @@ export default function AdminPage() {
     setUploadStatus(`"${file.name}" wird hochgeladen...`);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
+      // Step 1: Get resumable upload URL from our server (small JSON request)
+      const initResponse = await fetch('/api/upload', {
         method: 'POST',
         headers: {
-          'Authorization': getAuthHeader()
+          'Authorization': getAuthHeader(),
+          'Content-Type': 'application/json',
         },
-        body: formData
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+        }),
       });
 
-      if (!response.ok) {
-        let errMsg = 'Upload fehlgeschlagen';
+      if (!initResponse.ok) {
+        let errMsg = 'Upload-Initialisierung fehlgeschlagen';
         try {
-          const data = await response.json();
+          const data = await initResponse.json();
           errMsg = data.error || errMsg;
         } catch {
-          errMsg = `Upload fehlgeschlagen (Status ${response.status})`;
+          errMsg = `Fehler (Status ${initResponse.status})`;
         }
         throw new Error(errMsg);
       }
 
-      const data = await response.json();
+      const { uploadUrl } = await initResponse.json();
+
+      // Step 2: Upload file directly to Google Drive (bypasses Vercel size limit)
+      setUploadStatus(`"${file.name}" wird zu Google Drive hochgeladen...`);
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'Content-Length': file.size.toString(),
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Google Drive Upload fehlgeschlagen (${uploadResponse.status})`);
+      }
+
+      const driveFile = await uploadResponse.json();
+      const fileId = driveFile.id;
+      const downloadLink = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
       // Auto-fill the name (without extension) and link
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
       setNewVertrag({
         name: nameWithoutExt,
-        driveLink: data.link
+        driveLink: downloadLink,
       });
       setUploadStatus(`"${file.name}" erfolgreich hochgeladen`);
 
@@ -191,7 +213,7 @@ export default function AdminPage() {
   if (!isAuthenticated) {
     return (
       <>
-        <style>{responsiveStyles}</style>
+        <style suppressHydrationWarning>{responsiveStyles}</style>
         <div className="admin-container">
           <div className="login-card">
             <div className="logo-area">
@@ -235,7 +257,7 @@ export default function AdminPage() {
   // Admin Dashboard
   return (
     <>
-      <style>{responsiveStyles}</style>
+      <style suppressHydrationWarning>{responsiveStyles}</style>
       <div className="admin-container">
         <div className="dashboard">
           <header className="admin-header">
