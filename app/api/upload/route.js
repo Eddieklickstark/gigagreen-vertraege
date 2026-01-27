@@ -3,13 +3,6 @@ import { google } from 'googleapis';
 import { checkAuth, unauthorizedResponse } from '@/lib/auth';
 import { Readable } from 'stream';
 
-// Allow files up to 10MB
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 export const maxDuration = 30;
 
 const corsHeaders = {
