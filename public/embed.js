@@ -16,11 +16,6 @@
   // Styles einfügen (1:1 wie Original)
   const style = document.createElement('style');
   style.textContent = `
-    :root {
-      --highlight-yellow: #fff86d;
-      --highlight-yellow-hover: #fff200;
-      --icon-green: #073b2a;
-    }
     #vertrag-list-container {
       font-family: 'Figtree', sans-serif;
     }
@@ -50,7 +45,7 @@
       flex: 1;
     }
     #vertrag-list-container .icon-circle {
-      background: var(--highlight-yellow);
+      background: #fff86d;
       border-radius: 50%;
       width: 80px;
       height: 80px;
@@ -62,7 +57,7 @@
     #vertrag-list-container .icon-svg {
       width: 40px;
       height: 40px;
-      fill: var(--icon-green);
+      fill: #073b2a;
     }
     #vertrag-list-container .vertrag-title {
       font-weight: 600;
@@ -70,7 +65,7 @@
       color: #111827;
     }
     #vertrag-list-container .download-button {
-      background-color: var(--highlight-yellow);
+      background-color: #fff86d;
       color: #111827;
       border: none;
       border-radius: 50px;
@@ -82,7 +77,7 @@
       font-family: 'Figtree', sans-serif;
     }
     #vertrag-list-container .download-button:hover {
-      background-color: var(--highlight-yellow-hover);
+      background-color: #fff200;
       transform: translateY(-1px);
     }
     #vertrag-list-container .download-button:active {
