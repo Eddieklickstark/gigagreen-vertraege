@@ -14,7 +14,18 @@ const corsHeaders = {
 const FOLDER_ID = '1qoE0Exyw1wgYWtwtGrQOVLpUyNppujm8';
 
 function getAuth() {
-  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}');
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY || '{}';
+  let credentials;
+  try {
+    credentials = JSON.parse(raw);
+  } catch (e) {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY ist kein gültiges JSON: ' + e.message);
+  }
+
+  if (!credentials.client_email) {
+    throw new Error('Service Account JSON enthält keine client_email. Keys vorhanden: ' + Object.keys(credentials).join(', '));
+  }
+
   return new google.auth.GoogleAuth({
     credentials,
     scopes: ['https://www.googleapis.com/auth/drive'],
@@ -44,6 +55,20 @@ export async function POST(request) {
     const auth = getAuth();
     const drive = google.drive({ version: 'v3', auth });
 
+    // Verify folder access first
+    try {
+      await drive.files.get({
+        fileId: FOLDER_ID,
+        fields: 'id, name',
+        supportsAllDrives: true,
+      });
+    } catch (folderErr) {
+      return NextResponse.json(
+        { error: `Ordner-Zugriff fehlgeschlagen (${FOLDER_ID}): ${folderErr.message}` },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const stream = Readable.from(buffer);
 
@@ -57,6 +82,7 @@ export async function POST(request) {
         body: stream,
       },
       fields: 'id, name, webViewLink',
+      supportsAllDrives: true,
     });
 
     // Make file accessible via link
@@ -66,6 +92,7 @@ export async function POST(request) {
         role: 'reader',
         type: 'anyone',
       },
+      supportsAllDrives: true,
     });
 
     const downloadLink = `https://drive.google.com/uc?export=download&id=${driveFile.data.id}`;
