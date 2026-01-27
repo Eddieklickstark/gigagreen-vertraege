@@ -61,6 +61,7 @@ export async function POST(request) {
         fileId: FOLDER_ID,
         fields: 'id, name',
         supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
       });
     } catch (folderErr) {
       return NextResponse.json(
