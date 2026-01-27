@@ -81,8 +81,14 @@ export default function AdminPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Upload fehlgeschlagen');
+        let errMsg = 'Upload fehlgeschlagen';
+        try {
+          const data = await response.json();
+          errMsg = data.error || errMsg;
+        } catch {
+          errMsg = `Upload fehlgeschlagen (Status ${response.status})`;
+        }
+        throw new Error(errMsg);
       }
 
       const data = await response.json();
