@@ -167,11 +167,22 @@ export default function AdminPage() {
 
           <div className="card">
             <h2 className="card-title">Neue Vorlage hinzufügen</h2>
+            <p className="helper-text">
+              1. Datei in den{' '}
+              <a href="https://drive.google.com/drive/folders/1qoE0Exyw1wgYWtwtGrQOVLpUyNppujm8" target="_blank" rel="noopener noreferrer" className="helper-link">
+                Google Drive Ordner
+              </a>
+              {' '}hochladen
+              <br />
+              2. Rechtsklick auf die Datei → „Link kopieren"
+              <br />
+              3. Name und Link hier einfügen
+            </p>
             <form onSubmit={handleAdd}>
               <div className="form-row">
                 <input
                   type="text"
-                  placeholder="Name der Vorlage"
+                  placeholder="z.B. Nutzungsvertrag Dach"
                   value={newVertrag.name}
                   onChange={(e) => setNewVertrag({ ...newVertrag, name: e.target.value })}
                   className="admin-input input-flex"
@@ -179,7 +190,7 @@ export default function AdminPage() {
                 />
                 <input
                   type="url"
-                  placeholder="Google Drive Link"
+                  placeholder="https://drive.google.com/..."
                   value={newVertrag.driveLink}
                   onChange={(e) => setNewVertrag({ ...newVertrag, driveLink: e.target.value })}
                   className="admin-input input-flex"
@@ -359,6 +370,28 @@ const responsiveStyles = `
     font-weight: 600;
     color: #111827;
     margin: 0 0 1rem 0;
+  }
+
+  .helper-text {
+    font-size: 0.9rem;
+    color: #6B7280;
+    line-height: 1.7;
+    margin: 0 0 1rem 0;
+    padding: 0.75rem 1rem;
+    background: #F9FAFB;
+    border-radius: 8px;
+    border-left: 3px solid #073b2a;
+  }
+
+  .helper-link {
+    color: #073b2a;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .helper-link:hover {
+    color: #0a5c42;
   }
 
   .form-row {
