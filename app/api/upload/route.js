@@ -36,57 +36,12 @@ export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
-// Step 1: POST with just filename+type → returns resumable upload URL
-// Step 2: POST with file body → direct upload (for small files)
 export async function POST(request) {
   if (!checkAuth(request)) {
     return unauthorizedResponse();
   }
 
   try {
-    const contentType = request.headers.get('content-type') || '';
-
-    // If JSON request: create resumable upload session and return URL
-    if (contentType.includes('application/json')) {
-      const { filename, mimeType } = await request.json();
-      if (!filename) {
-        return NextResponse.json({ error: 'filename required' }, { status: 400, headers: corsHeaders });
-      }
-
-      const auth = getAuth();
-      const authClient = await auth.getClient();
-      const token = await authClient.getAccessToken();
-
-      // Create resumable upload session directly via Google API
-      const res = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token.token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: filename,
-            parents: [FOLDER_ID],
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Google API error: ${res.status} ${errText}`);
-      }
-
-      const uploadUrl = res.headers.get('location');
-
-      return NextResponse.json({
-        uploadUrl,
-        token: token.token,
-      }, { headers: corsHeaders });
-    }
-
-    // Fallback: FormData upload for small files (< 4MB)
     const formData = await request.formData();
     const file = formData.get('file');
 
