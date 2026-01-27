@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { checkAuth, unauthorizedResponse } from '@/lib/auth';
-import { Readable } from 'stream';
 
 export const maxDuration = 60;
 
@@ -42,54 +41,52 @@ export async function POST(request) {
   }
 
   try {
-    const formData = await request.formData();
-    const file = formData.get('file');
-
-    if (!file) {
-      return NextResponse.json(
-        { error: 'Keine Datei hochgeladen' },
-        { status: 400, headers: corsHeaders }
-      );
+    const { filename, mimeType } = await request.json();
+    if (!filename) {
+      return NextResponse.json({ error: 'filename required' }, { status: 400, headers: corsHeaders });
     }
 
     const auth = getAuth();
-    const drive = google.drive({ version: 'v3', auth });
+    const authClient = await auth.getClient();
+    const token = await authClient.getAccessToken();
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const stream = Readable.from(buffer);
+    const origin = request.headers.get('origin') || 'https://gigagreen-vertraege.vercel.app';
 
-    const driveFile = await drive.files.create({
-      requestBody: {
-        name: file.name,
-        parents: [FOLDER_ID],
-      },
-      media: {
-        mimeType: file.type || 'application/octet-stream',
-        body: stream,
-      },
-      fields: 'id, name, webViewLink',
-      supportsAllDrives: true,
-    });
+    // Create resumable upload session with origin param for CORS
+    const res = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token.token}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': mimeType || 'application/octet-stream',
+          'Origin': origin,
+        },
+        body: JSON.stringify({
+          name: filename,
+          parents: [FOLDER_ID],
+        }),
+      }
+    );
 
-    // Try to set permissions (shared drives may inherit)
-    try {
-      await drive.permissions.create({
-        fileId: driveFile.data.id,
-        requestBody: { role: 'reader', type: 'anyone' },
-        supportsAllDrives: true,
-      });
-    } catch (permErr) {
-      console.log('Permission already inherited:', permErr.message);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Google API error: ${res.status} ${errText}`);
     }
 
-    const downloadLink = `https://drive.google.com/uc?export=download&id=${driveFile.data.id}`;
+    const uploadUrl = res.headers.get('location');
 
-    return NextResponse.json({
-      id: driveFile.data.id,
-      name: driveFile.data.name,
-      link: downloadLink,
-      viewLink: driveFile.data.webViewLink,
-    }, { headers: corsHeaders });
+    // Extract file ID from response if available, otherwise client gets it after upload
+    let fileId = null;
+    try {
+      const body = await res.json();
+      fileId = body.id;
+    } catch {
+      // Resumable session may not return a body
+    }
+
+    return NextResponse.json({ uploadUrl, fileId }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Upload error:', error);

@@ -65,40 +65,53 @@ export default function AdminPage() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    const MAX_SIZE = 4 * 1024 * 1024; // 4 MB
-    if (file.size > MAX_SIZE) {
-      setUploadStatus('Fehler: Datei ist zu groß (max. 4 MB)');
-      setTimeout(() => setUploadStatus(''), 5000);
-      return;
-    }
-
     setUploading(true);
     setUploadStatus(`"${file.name}" wird hochgeladen...`);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/upload', {
+      // Step 1: Get resumable upload URL from our server (small JSON request)
+      const initResponse = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Authorization': getAuthHeader() },
-        body: formData,
+        headers: {
+          'Authorization': getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+        }),
       });
 
-      if (!response.ok) {
-        let errMsg = 'Upload fehlgeschlagen';
+      if (!initResponse.ok) {
+        let errMsg = 'Upload-Initialisierung fehlgeschlagen';
         try {
-          const data = await response.json();
+          const data = await initResponse.json();
           errMsg = data.error || errMsg;
         } catch {
-          errMsg = `Fehler (Status ${response.status})`;
+          errMsg = `Fehler (Status ${initResponse.status})`;
         }
         throw new Error(errMsg);
       }
 
-      const data = await response.json();
+      const { uploadUrl } = await initResponse.json();
+
+      // Step 2: Upload file directly to Google Drive (bypasses Vercel size limit)
+      setUploadStatus(`"${file.name}" wird zu Google Drive hochgeladen...`);
+
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Google Drive Upload fehlgeschlagen (${uploadResponse.status})`);
+      }
+
+      const driveFile = await uploadResponse.json();
+      const downloadLink = `https://drive.google.com/uc?export=download&id=${driveFile.id}`;
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
-      setNewVertrag({ name: nameWithoutExt, driveLink: data.link });
+      setNewVertrag({ name: nameWithoutExt, driveLink: downloadLink });
       setUploadStatus(`"${file.name}" erfolgreich hochgeladen`);
       setTimeout(() => setUploadStatus(''), 4000);
     } catch (err) {
