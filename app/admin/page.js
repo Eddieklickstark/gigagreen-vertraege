@@ -33,17 +33,20 @@ export default function AdminPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/vertraege', {
+      const response = await fetch('/api/auth', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': getAuthHeader()
-        },
-        body: JSON.stringify({ name: '__test__', driveLink: '__test__' })
+        }
       });
 
       if (response.status === 401) {
         setError('Ungültige Anmeldedaten');
+        return;
+      }
+
+      if (!response.ok) {
+        setError('Anmeldung fehlgeschlagen');
         return;
       }
 
