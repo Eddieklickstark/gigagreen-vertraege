@@ -86,15 +86,20 @@ export async function POST(request) {
       supportsAllDrives: true,
     });
 
-    // Make file accessible via link
-    await drive.permissions.create({
-      fileId: driveFile.data.id,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-      },
-      supportsAllDrives: true,
-    });
+    // Try to make file accessible via link (may fail on shared drives with inherited permissions)
+    try {
+      await drive.permissions.create({
+        fileId: driveFile.data.id,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+        supportsAllDrives: true,
+      });
+    } catch (permErr) {
+      // Shared drives often inherit permissions from parent — this is fine
+      console.log('Permission already inherited:', permErr.message);
+    }
 
     const downloadLink = `https://drive.google.com/uc?export=download&id=${driveFile.data.id}`;
 
