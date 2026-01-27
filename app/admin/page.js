@@ -195,7 +195,7 @@ export default function AdminPage() {
                 </svg>
               </div>
             </div>
-            <h1 className="login-title">GigaGreen Admin</h1>
+            <h1 className="login-title">GIGA.GREEN Admin</h1>
             <p className="login-subtitle">Vertragsvorlagen verwalten</p>
 
             <form onSubmit={handleLogin} className="login-form">
@@ -234,7 +234,7 @@ export default function AdminPage() {
         <div className="dashboard">
           <header className="admin-header">
             <h1 className="admin-title">Vertragsvorlagen</h1>
-            <p className="admin-subtitle">GigaGreen Admin-Bereich</p>
+            <p className="admin-subtitle">GIGA.GREEN Admin-Bereich</p>
           </header>
 
           <div className="card">

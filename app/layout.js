@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'GigaGreen Vertragsvorlagen',
+  title: 'GIGA.GREEN Vertragsvorlagen',
   description: 'Verwaltung der Vertragsvorlagen',
 };
 
