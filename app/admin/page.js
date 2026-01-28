@@ -394,6 +394,28 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+
+          <div className="info-card">
+            <h2 className="info-title">Info</h2>
+            <div className="info-grid">
+              <div className="info-item">
+                <span className="info-label">Vertragsvorlagen</span>
+                <a href="https://www.giga.green/vorlagen-vertraege" target="_blank" rel="noopener noreferrer" className="info-link">giga.green/vorlagen-vertraege</a>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Gemeinschaftliche Gebäudeversorgung</span>
+                <a href="https://www.giga.green/gemeinschaftliche-gebaudeversorgung" target="_blank" rel="noopener noreferrer" className="info-link">giga.green/gemeinschaftliche-gebaudeversorgung</a>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Google Drive Ordner</span>
+                <a href="https://drive.google.com/drive/folders/1qoE0Exyw1wgYWtwtGrQOVLpUyNppujm8?usp=sharing" target="_blank" rel="noopener noreferrer" className="info-link">Uploads in Google Drive</a>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Fragen?</span>
+                <a href="mailto:eddie@klickstark.de" className="info-link">eddie@klickstark.de</a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </>
@@ -876,6 +898,56 @@ const responsiveStyles = `
 
     .item-name {
       font-size: 0.95rem;
+    }
+  }
+
+  .info-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 12px rgba(7, 59, 42, 0.04);
+    border: 1px solid #E5E7EB;
+  }
+
+  .info-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #073b2a;
+    margin: 0 0 1rem 0;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .info-label {
+    font-size: 0.8rem;
+    color: #6B7280;
+    font-weight: 500;
+  }
+
+  .info-link {
+    font-size: 0.9rem;
+    color: #073b2a;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .info-link:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 768px) {
+    .info-grid {
+      grid-template-columns: 1fr;
     }
   }
 `;
