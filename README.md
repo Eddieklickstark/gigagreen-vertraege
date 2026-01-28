@@ -40,12 +40,61 @@ Die Vorlagen sind in zwei separate Listen aufgeteilt, mit jeweils eigenem Datens
 
 ## Environment Variables (Vercel)
 
-| Variable | Beschreibung |
-|---|---|
-| `ADMIN_USERNAME` | Login-Benutzername |
-| `ADMIN_PASSWORD` | Login-Passwort |
-| `GOOGLE_SERVICE_ACCOUNT_KEY` | Google Service Account JSON für Drive-Upload |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob Storage Token (optional) |
+| Variable | Erforderlich | Beschreibung |
+|---|---|---|
+| `ADMIN_USERNAME` | Ja | Login-Benutzername für das Admin-Panel |
+| `ADMIN_PASSWORD` | Ja | Login-Passwort für das Admin-Panel |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` | Ja | Google Service Account JSON (als String) für Drive-Upload |
+| `BLOB_READ_WRITE_TOKEN` | Ja | Vercel Blob Storage Token -- ohne diesen Token werden Daten **nicht** persistiert |
+
+## Setup
+
+### 1. Repository klonen
+
+```bash
+git clone https://github.com/Eddieklickstark/gigagreen-vertraege.git
+cd gigagreen-vertraege
+npm install
+```
+
+### 2. Vercel-Projekt verknüpfen
+
+```bash
+npx vercel link
+```
+
+### 3. Blob Store einrichten
+
+Im Vercel Dashboard:
+
+1. **Project** aufrufen -> **Storage** Tab
+2. **Connect Database** -> **Blob** -> **Create a new Blob store**
+3. Environments auswahlen (Production, Preview, Development)
+4. `BLOB_READ_WRITE_TOKEN` wird automatisch als Environment Variable angelegt
+
+Ohne diesen Token funktioniert die Datenpersistierung nicht. Vorlagen werden dann nur im Arbeitsspeicher der Serverless Function gehalten und gehen beim nachsten Cold Start verloren (ca. 15 Sekunden Inaktivitat).
+
+### 4. Weitere Environment Variables setzen
+
+Im Vercel Dashboard unter **Settings -> Environment Variables**:
+
+- `ADMIN_USERNAME` und `ADMIN_PASSWORD` -- Zugangsdaten fuer das Admin-Panel
+- `GOOGLE_SERVICE_ACCOUNT_KEY` -- JSON-Key des Google Service Accounts (als einzeiliger String)
+
+### 5. Lokal entwickeln
+
+```bash
+npx vercel env pull   # Laedt Environment Variables in .env.local
+npm run dev
+```
+
+### 6. Deployment
+
+Deployment erfolgt automatisch bei Push auf `main` (Vercel Git Integration) oder manuell:
+
+```bash
+npx vercel --prod
+```
 
 ## Projektstruktur
 
