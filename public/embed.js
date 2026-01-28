@@ -2,7 +2,7 @@
   'use strict';
 
   // API URL und Kategorie aus dem Script-Tag lesen
-  const SCRIPT_TAG = (function() {
+  const SCRIPT_TAG = document.currentScript || (function() {
     const scripts = document.getElementsByTagName('script');
     for (let i = 0; i < scripts.length; i++) {
       if (scripts[i].src && scripts[i].src.includes('embed.js')) {
@@ -12,13 +12,12 @@
     return null;
   })();
 
-  const CATEGORY = SCRIPT_TAG ? (SCRIPT_TAG.getAttribute('data-category') || '') : '';
+  const CATEGORY = SCRIPT_TAG ? (SCRIPT_TAG.getAttribute('data-category') || 'vertragsvorlagen') : 'vertragsvorlagen';
 
   const API_URL = (function() {
-    if (!SCRIPT_TAG) return '/api/vertraege';
-    const url = new URL(SCRIPT_TAG.src);
-    const base = url.origin + '/api/vertraege';
-    return CATEGORY ? base + '?category=' + encodeURIComponent(CATEGORY) : base;
+    if (!SCRIPT_TAG || !SCRIPT_TAG.src) return '/api/vertraege?category=' + CATEGORY;
+    var url = new URL(SCRIPT_TAG.src);
+    return url.origin + '/api/vertraege?category=' + encodeURIComponent(CATEGORY);
   })();
 
   // Styles einfügen (1:1 wie Original)

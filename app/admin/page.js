@@ -26,9 +26,10 @@ export default function AdminPage() {
     return 'Basic ' + btoa(`${credentials.username}:${credentials.password}`);
   };
 
-  const loadVertraege = async () => {
+  const loadVertraege = async (category) => {
+    const cat = category || activeTab;
     try {
-      const response = await fetch('/api/vertraege');
+      const response = await fetch(`/api/vertraege?category=${cat}`);
       if (!response.ok) throw new Error('Fehler beim Laden');
       const data = await response.json();
       setVertraege(data);
@@ -165,7 +166,7 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
           'Authorization': getAuthHeader()
         },
-        body: JSON.stringify({ ...newVertrag, category: activeTab })
+        body: JSON.stringify({ name: newVertrag.name, driveLink: newVertrag.driveLink, category: activeTab })
       });
 
       if (!response.ok) throw new Error('Fehler beim Hinzufügen');
@@ -185,7 +186,7 @@ export default function AdminPage() {
 
     setDeleting(id);
     try {
-      const response = await fetch(`/api/vertraege?id=${id}`, {
+      const response = await fetch(`/api/vertraege?id=${id}&category=${activeTab}`, {
         method: 'DELETE',
         headers: {
           'Authorization': getAuthHeader()
@@ -202,8 +203,8 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    loadVertraege();
-  }, []);
+    loadVertraege(activeTab);
+  }, [activeTab]);
 
   // Login Screen
   if (!isAuthenticated) {
@@ -354,7 +355,7 @@ export default function AdminPage() {
           </div>
 
           <div className="card">
-            <h2 className="card-title">Aktuelle Vorlagen ({vertraege.filter(v => !v.name.startsWith('__') && (v.category || 'vertragsvorlagen') === activeTab).length})</h2>
+            <h2 className="card-title">Aktuelle Vorlagen ({vertraege.filter(v => !v.name.startsWith('__')).length})</h2>
 
             {loading ? (
               <p className="loading-text">Laden...</p>
@@ -362,7 +363,7 @@ export default function AdminPage() {
               <p className="error-text">{error}</p>
             ) : (
               <div className="list">
-                {vertraege.filter(v => !v.name.startsWith('__') && (v.category || 'vertragsvorlagen') === activeTab).map((vertrag) => (
+                {vertraege.filter(v => !v.name.startsWith('__')).map((vertrag) => (
                   <div key={vertrag.id} className="list-item">
                     <div className="item-info">
                       <div className="item-icon">
@@ -387,7 +388,7 @@ export default function AdminPage() {
                   </div>
                 ))}
 
-                {vertraege.filter(v => !v.name.startsWith('__') && (v.category || 'vertragsvorlagen') === activeTab).length === 0 && (
+                {vertraege.filter(v => !v.name.startsWith('__')).length === 0 && (
                   <p className="empty-text">Noch keine Vorlagen vorhanden</p>
                 )}
               </div>

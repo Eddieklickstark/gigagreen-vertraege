@@ -14,16 +14,13 @@ export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
-// GET - Öffentlich: Alle Verträge abrufen (optional ?category= Filter)
+// GET - Öffentlich: Verträge einer Kategorie abrufen
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
+    const category = searchParams.get('category') || 'vertragsvorlagen';
 
-    let vertraege = await getVertraege();
-    if (category) {
-      vertraege = vertraege.filter(v => v.category === category);
-    }
+    const vertraege = await getVertraege(category);
     return NextResponse.json(vertraege, { headers: corsHeaders });
   } catch (error) {
     return NextResponse.json(
@@ -42,6 +39,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { name, driveLink, category } = body;
+    const cat = category || 'vertragsvorlagen';
 
     if (!name || !driveLink) {
       return NextResponse.json(
@@ -50,17 +48,16 @@ export async function POST(request) {
       );
     }
 
-    const vertraege = await getVertraege();
+    const vertraege = await getVertraege(cat);
     const newVertrag = {
       id: generateId(),
       name: name.trim(),
       driveLink: driveLink.trim(),
-      category: category || 'vertragsvorlagen',
       createdAt: new Date().toISOString()
     };
 
     vertraege.push(newVertrag);
-    await saveVertraege(vertraege);
+    await saveVertraege(vertraege, cat);
 
     return NextResponse.json(newVertrag, { status: 201, headers: corsHeaders });
   } catch (error) {
@@ -80,6 +77,7 @@ export async function DELETE(request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const category = searchParams.get('category') || 'vertragsvorlagen';
 
     if (!id) {
       return NextResponse.json(
@@ -88,7 +86,7 @@ export async function DELETE(request) {
       );
     }
 
-    let vertraege = await getVertraege();
+    let vertraege = await getVertraege(category);
     const initialLength = vertraege.length;
     vertraege = vertraege.filter(v => v.id !== id);
 
@@ -99,7 +97,7 @@ export async function DELETE(request) {
       );
     }
 
-    await saveVertraege(vertraege);
+    await saveVertraege(vertraege, category);
 
     return NextResponse.json({ success: true }, { headers: corsHeaders });
   } catch (error) {
