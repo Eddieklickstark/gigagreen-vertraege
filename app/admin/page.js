@@ -63,7 +63,7 @@ export default function AdminPage() {
 
       setIsAuthenticated(true);
       setError(null);
-      loadVertraege();
+      loadVertraege(activeTab);
     } catch (err) {
       setError('Anmeldung fehlgeschlagen');
     }
@@ -173,7 +173,7 @@ export default function AdminPage() {
 
       setNewVertrag({ name: '', driveLink: '' });
       setUploadStatus('');
-      loadVertraege();
+      loadVertraege(activeTab);
     } catch (err) {
       setError('Fehler beim Hinzufügen');
     } finally {
@@ -194,7 +194,7 @@ export default function AdminPage() {
       });
 
       if (!response.ok) throw new Error('Fehler beim Löschen');
-      loadVertraege();
+      loadVertraege(activeTab);
     } catch (err) {
       setError('Fehler beim Löschen');
     } finally {
