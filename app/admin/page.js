@@ -14,7 +14,13 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [dragActive, setDragActive] = useState(false);
+  const [activeTab, setActiveTab] = useState('vertragsvorlagen');
   const fileInputRef = useRef(null);
+
+  const TABS = [
+    { id: 'vertragsvorlagen', label: 'Vertragsvorlagen' },
+    { id: 'gebaeudeversorgung', label: 'Gemeinschaftliche Gebäudeversorgung' },
+  ];
 
   const getAuthHeader = () => {
     return 'Basic ' + btoa(`${credentials.username}:${credentials.password}`);
@@ -159,7 +165,7 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
           'Authorization': getAuthHeader()
         },
-        body: JSON.stringify(newVertrag)
+        body: JSON.stringify({ ...newVertrag, category: activeTab })
       });
 
       if (!response.ok) throw new Error('Fehler beim Hinzufügen');
@@ -251,8 +257,19 @@ export default function AdminPage() {
       <div className="admin-container">
         <div className="dashboard">
           <header className="admin-header">
-            <h1 className="admin-title">Vertragsvorlagen</h1>
-            <p className="admin-subtitle">GIGA.GREEN Admin-Bereich</p>
+            <h1 className="admin-title">GIGA.GREEN Admin</h1>
+            <p className="admin-subtitle">Vorlagen verwalten</p>
+            <div className="tab-bar">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  className={`tab-button ${activeTab === tab.id ? 'tab-active' : ''}`}
+                  onClick={() => { setActiveTab(tab.id); setUploadStatus(''); setNewVertrag({ name: '', driveLink: '' }); }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </header>
 
           <div className="card">
@@ -337,7 +354,7 @@ export default function AdminPage() {
           </div>
 
           <div className="card">
-            <h2 className="card-title">Aktuelle Vorlagen ({vertraege.filter(v => !v.name.startsWith('__')).length})</h2>
+            <h2 className="card-title">Aktuelle Vorlagen ({vertraege.filter(v => !v.name.startsWith('__') && (v.category || 'vertragsvorlagen') === activeTab).length})</h2>
 
             {loading ? (
               <p className="loading-text">Laden...</p>
@@ -345,7 +362,7 @@ export default function AdminPage() {
               <p className="error-text">{error}</p>
             ) : (
               <div className="list">
-                {vertraege.filter(v => !v.name.startsWith('__')).map((vertrag) => (
+                {vertraege.filter(v => !v.name.startsWith('__') && (v.category || 'vertragsvorlagen') === activeTab).map((vertrag) => (
                   <div key={vertrag.id} className="list-item">
                     <div className="item-info">
                       <div className="item-icon">
@@ -370,7 +387,7 @@ export default function AdminPage() {
                   </div>
                 ))}
 
-                {vertraege.filter(v => !v.name.startsWith('__')).length === 0 && (
+                {vertraege.filter(v => !v.name.startsWith('__') && (v.category || 'vertragsvorlagen') === activeTab).length === 0 && (
                   <p className="empty-text">Noch keine Vorlagen vorhanden</p>
                 )}
               </div>
@@ -479,6 +496,43 @@ const responsiveStyles = `
   }
 
   .admin-header { margin-bottom: 2rem; }
+
+  .tab-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .tab-button {
+    padding: 0.6rem 1.25rem;
+    border: 2px solid #E5E7EB;
+    border-radius: 50px;
+    background: #fff;
+    color: #6B7280;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Figtree', sans-serif;
+  }
+
+  .tab-button:hover {
+    border-color: #073b2a;
+    color: #073b2a;
+  }
+
+  .tab-active {
+    background: #073b2a;
+    color: #f1f86d;
+    border-color: #073b2a;
+  }
+
+  .tab-active:hover {
+    background: #0a5c42;
+    border-color: #0a5c42;
+    color: #f1f86d;
+  }
 
   .admin-title {
     font-size: 2rem;

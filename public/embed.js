@@ -1,16 +1,24 @@
 (function() {
   'use strict';
 
-  // API URL - wird automatisch erkannt
-  const API_URL = (function() {
+  // API URL und Kategorie aus dem Script-Tag lesen
+  const SCRIPT_TAG = (function() {
     const scripts = document.getElementsByTagName('script');
     for (let i = 0; i < scripts.length; i++) {
       if (scripts[i].src && scripts[i].src.includes('embed.js')) {
-        const url = new URL(scripts[i].src);
-        return url.origin + '/api/vertraege';
+        return scripts[i];
       }
     }
-    return '/api/vertraege';
+    return null;
+  })();
+
+  const CATEGORY = SCRIPT_TAG ? (SCRIPT_TAG.getAttribute('data-category') || '') : '';
+
+  const API_URL = (function() {
+    if (!SCRIPT_TAG) return '/api/vertraege';
+    const url = new URL(SCRIPT_TAG.src);
+    const base = url.origin + '/api/vertraege';
+    return CATEGORY ? base + '?category=' + encodeURIComponent(CATEGORY) : base;
   })();
 
   // Styles einfügen (1:1 wie Original)

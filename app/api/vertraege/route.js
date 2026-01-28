@@ -14,10 +14,16 @@ export async function OPTIONS() {
   return new Response(null, { headers: corsHeaders });
 }
 
-// GET - Öffentlich: Alle Verträge abrufen
-export async function GET() {
+// GET - Öffentlich: Alle Verträge abrufen (optional ?category= Filter)
+export async function GET(request) {
   try {
-    const vertraege = await getVertraege();
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+
+    let vertraege = await getVertraege();
+    if (category) {
+      vertraege = vertraege.filter(v => v.category === category);
+    }
     return NextResponse.json(vertraege, { headers: corsHeaders });
   } catch (error) {
     return NextResponse.json(
@@ -35,7 +41,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, driveLink } = body;
+    const { name, driveLink, category } = body;
 
     if (!name || !driveLink) {
       return NextResponse.json(
@@ -49,6 +55,7 @@ export async function POST(request) {
       id: generateId(),
       name: name.trim(),
       driveLink: driveLink.trim(),
+      category: category || 'vertragsvorlagen',
       createdAt: new Date().toISOString()
     };
 
